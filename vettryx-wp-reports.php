@@ -3,7 +3,7 @@
  * Plugin Name: VETTRYX WP Reports
  * Plugin URI:  https://github.com/vettryx/vettryx-wp-core
  * Description: Submódulo do VETTRYX WP Core para geração nativa de relatórios mensais de manutenção e controle de SLA.
- * Version:     1.1.0
+ * Version:     1.1.1
  * Author:      VETTRYX Tech
  * Author URI:  https://vettryx.com.br
  * License:     Proprietária (Uso Comercial Exclusivo)
@@ -18,7 +18,6 @@ if (!defined('ABSPATH')) {
 /**
  * ==============================================================================
  * 1. REGISTRO DE ROTAS E MENU
- * Responsável por adicionar o módulo no ecossistema VETTRYX Core.
  * ==============================================================================
  */
 
@@ -37,73 +36,13 @@ function vettryx_reports_add_submenu() {
 /**
  * ==============================================================================
  * 2. INTERFACE E LÓGICA DO DASHBOARD
- * Lida com o formulário, salva os dados temporários e renderiza o preview.
  * ==============================================================================
  */
 
 function vettryx_reports_dashboard_html() {
     if (!current_user_can('manage_options')) return;
 
-    // Puxa os dados salvos ou valores em branco para inicializar
-    $data = get_option('vettryx_latest_report_data', [
-        'month_year'   => wp_date('F / Y'),
-        'hours_used'   => '05:00',
-        'updates_done' => 'Sim',
-        'backups_done' => 'Sim',
-        'security_ok'  => 'Sim',
-        'tasks_desc'   => ""
-    ]);
-
-    // 1. LÓGICA DE AUTOMAÇÃO: Puxa os dados do Audit Log
-    if (isset($_POST['vettryx_pull_audit']) && check_admin_referer('vettryx_report_nonce')) {
-        global $wpdb;
-        $table_name = $wpdb->prefix . 'vettryx_audit_log';
-        
-        // Verifica se a tabela do espião (Audit Log) existe
-        if ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") == $table_name) {
-            $current_month = date('m');
-            $current_year = date('Y');
-            
-            // Busca apenas os logs do mês atual
-            $logs = $wpdb->get_results($wpdb->prepare(
-                "SELECT action, object_name FROM $table_name WHERE MONTH(created_at) = %d AND YEAR(created_at) = %d",
-                $current_month, $current_year
-            ));
-            
-            $updates_count = 0;
-            $edits_count = 0;
-            $plugins_updated = [];
-            
-            // Filtra e conta o que foi feito
-            foreach ($logs as $log) {
-                if (strpos($log->action, 'Atualizou') !== false) {
-                    $updates_count++;
-                    if (!in_array($log->object_name, $plugins_updated)) $plugins_updated[] = $log->object_name;
-                } elseif (in_array($log->action, ['Editou', 'Criou', 'Excluiu Permanentemente', 'Moveu para a Lixeira'])) {
-                    $edits_count++;
-                }
-            }
-            
-            // Monta o texto de forma inteligente
-            $summary = "👉 RESUMO AUTOMÁTICO DO SISTEMA (" . wp_date('F/Y') . "):\n";
-            if ($updates_count > 0) {
-                $summary .= "- Atualizações realizadas: $updates_count itens processados.\n";
-                $summary .= "  Incluindo: " . implode(', ', array_slice($plugins_updated, 0, 5)) . (count($plugins_updated) > 5 ? ' e outros.' : '.') . "\n";
-                $data['updates_done'] = 'Sim';
-            }
-            if ($edits_count > 0) {
-                $summary .= "- Gestão de Conteúdo: $edits_count modificações e ajustes técnicos em páginas/posts registrados.\n";
-            }
-            $summary .= "- Rotina de backups e monitoramento preventivo validados sem anomalias.\n";
-            
-            $data['tasks_desc'] = $summary;
-            echo '<div class="notice notice-info is-dismissible"><p>Dados da auditoria importados com sucesso! Revise, adicione as horas e clique em Atualizar Dados do Relatório.</p></div>';
-        } else {
-            echo '<div class="notice notice-error is-dismissible"><p>Erro: Tabela de Auditoria não encontrada. O módulo Audit Log está ativo?</p></div>';
-        }
-    }
-
-    // 2. LÓGICA DE SALVAMENTO MANUAL
+    // LÓGICA DE SALVAMENTO MANUAL
     if (isset($_POST['vettryx_report_action']) && $_POST['vettryx_report_action'] === 'generate' && check_admin_referer('vettryx_report_nonce')) {
         $data = [
             'month_year'   => sanitize_text_field($_POST['report_month_year']),
@@ -116,6 +55,16 @@ function vettryx_reports_dashboard_html() {
         update_option('vettryx_latest_report_data', $data);
         echo '<div class="notice notice-success is-dismissible"><p>Dados salvos. Clique em Salvar como PDF para gerar o documento.</p></div>';
     }
+
+    // Puxa os dados salvos ou valores em branco para inicializar
+    $data = get_option('vettryx_latest_report_data', [
+        'month_year'   => wp_date('F / Y'),
+        'hours_used'   => '05:00',
+        'updates_done' => 'Sim',
+        'backups_done' => 'Sim',
+        'security_ok'  => 'Sim',
+        'tasks_desc'   => "1. Monitoramento preventivo realizado.\n2. Verificação de integridade do banco de dados."
+    ]);
 
     ?>
     <div class="wrap vettryx-no-print">
@@ -158,11 +107,6 @@ function vettryx_reports_dashboard_html() {
                         <th scope="row"><label for="report_tasks">Descritivo de Tarefas</label></th>
                         <td>
                             <textarea name="report_tasks" id="report_tasks" rows="6" style="width:100%;"><?php echo esc_textarea($data['tasks_desc']); ?></textarea>
-                            <p class="description">
-                                <button type="submit" name="vettryx_pull_audit" value="1" class="button button-secondary button-small" style="margin-top: 5px;">
-                                    <span class="dashicons dashicons-update" style="font-size: 14px; margin-top: 3px;"></span> Puxar Histórico Automático do Audit Log
-                                </button>
-                            </p>
                         </td>
                     </tr>
                 </table>
@@ -180,19 +124,14 @@ function vettryx_reports_dashboard_html() {
     /**
      * ==============================================================================
      * 3. TEMPLATE DE IMPRESSÃO (O PDF GERADO)
-     * Utiliza CSS @media print para ocultar o painel WP e exibir apenas isso.
      * ==============================================================================
      */
     ?>
     <style>
-        /* Esconde a visualização do relatório no uso normal do painel para não poluir */
         #vettryx-print-area { display: none; }
-
-        /* Magia do PDF: Quando clica em imprimir, esconde o WP inteiro e mostra só o relatório */
         @media print {
-            @page { margin: 0; } /* Remove data e URL nativas do navegador */
+            @page { margin: 0; }
             body { margin: 1.6cm; background: #fff !important; }
-            
             #wpadminbar, #adminmenuback, #adminmenuwrap, #wpfooter, .vettryx-no-print, .update-nag, .notice { display: none !important; }
             #wpcontent, #wpbody-content { margin-left: 0 !important; padding: 0 !important; }
             
