@@ -3,7 +3,7 @@
  * Plugin Name: VETTRYX WP Reports
  * Plugin URI:  https://github.com/vettryx/vettryx-wp-core
  * Description: Submódulo do VETTRYX WP Core para geração nativa de relatórios mensais de manutenção e controle de SLA.
- * Version:     1.0.1
+ * Version:     1.0.2
  * Author:      VETTRYX Tech
  * Author URI:  https://vettryx.com.br
  * License:     Proprietária (Uso Comercial Exclusivo)
@@ -26,8 +26,8 @@ add_action('admin_menu', 'vettryx_reports_add_submenu', 99);
 function vettryx_reports_add_submenu() {
     add_submenu_page(
         'vettryx-core-modules',
-        'VETTRYX WP Reports',
-        'VETTRYX WP Reports',
+        'Report Manager - VETTRYX Tech',
+        'Report Manager',
         'manage_options',
         'vettryx-wp-reports',
         'vettryx_reports_dashboard_html'
