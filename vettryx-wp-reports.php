@@ -1,9 +1,9 @@
 <?php
 /**
- * Plugin Name: VETTRYX WP Reports & SLA
+ * Plugin Name: VETTRYX WP Reports
  * Plugin URI:  https://github.com/vettryx/vettryx-wp-core
- * Description: Módulo para geração nativa de relatórios mensais de manutenção e controle de SLA. Foco em prestação de contas e zero bloatware.
- * Version:     1.0.0
+ * Description: Submódulo do VETTRYX WP Core para geração nativa de relatórios mensais de manutenção e controle de SLA.
+ * Version:     1.0.1
  * Author:      VETTRYX Tech
  * Author URI:  https://vettryx.com.br
  * License:     Proprietária (Uso Comercial Exclusivo)
@@ -26,8 +26,8 @@ add_action('admin_menu', 'vettryx_reports_add_submenu', 99);
 function vettryx_reports_add_submenu() {
     add_submenu_page(
         'vettryx-core-modules',
-        'Relatórios & SLA - VETTRYX Tech',
-        'Relatórios & SLA',
+        'VETTRYX WP Reports',
+        'VETTRYX WP Reports',
         'manage_options',
         'vettryx-wp-reports',
         'vettryx_reports_dashboard_html'
@@ -57,7 +57,7 @@ function vettryx_reports_dashboard_html() {
         
         // Salva os dados no banco para o preview (sobrescreve o anterior)
         update_option('vettryx_latest_report_data', $report_data);
-        echo '<div class="notice notice-success is-dismissible"><p>Dados do relatório atualizados. Role para baixo para visualizar e gerar o PDF.</p></div>';
+        echo '<div class="notice notice-success is-dismissible"><p>Dados do relatório atualizados. Clique em Salvar como PDF para gerar o documento.</p></div>';
     }
 
     // Puxa os dados salvos ou valores em branco para inicializar
@@ -73,7 +73,7 @@ function vettryx_reports_dashboard_html() {
     <div class="wrap vettryx-no-print">
         <h1 style="display:flex; align-items:center; gap:10px; margin-bottom: 20px;">
             <span class="dashicons dashicons-media-document" style="font-size: 28px; width: 28px; height: 28px;"></span> 
-            VETTRYX Reports & SLA
+            VETTRYX WP Reports
         </h1>
         <p>Gere os relatórios de manutenção mensal para enviar aos clientes, em conformidade com o escopo de serviços.</p>
 
@@ -125,6 +125,7 @@ function vettryx_reports_dashboard_html() {
         </div>
     </div>
 
+    <?php
     /**
      * ==============================================================================
      * 3. TEMPLATE DE IMPRESSÃO (O PDF GERADO)
@@ -138,8 +139,11 @@ function vettryx_reports_dashboard_html() {
 
         /* Magia do PDF: Quando clica em imprimir, esconde o WP inteiro e mostra só o relatório */
         @media print {
+            @page { margin: 0; } /* Remove data e URL nativas do navegador */
+            body { margin: 1.6cm; background: #fff !important; }
+            
             #wpadminbar, #adminmenuback, #adminmenuwrap, #wpfooter, .vettryx-no-print, .update-nag, .notice { display: none !important; }
-            #wpcontent, #wpbody-content { margin-left: 0 !important; padding: 0 !important; background: #fff !important; }
+            #wpcontent, #wpbody-content { margin-left: 0 !important; padding: 0 !important; }
             
             #vettryx-print-area {
                 display: block !important;
